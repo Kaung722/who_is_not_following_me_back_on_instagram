@@ -622,13 +622,13 @@ export default function App() {
   const hasAnyData = Boolean(followingName || followersParts.length || Object.keys(checkedAccounts).length);
 
   return (
-    <div className="w-full max-w-3xl lg:max-w-4xl animation-fade-in">
+    <div className="w-full max-w-3xl md:max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl animation-fade-in">
       <div className="bg-slate-900 rounded-xl sm:rounded-2xl p-4 sm:p-8 md:p-10 shadow-sm border border-slate-700/80">
         <header className="mb-6 sm:mb-8">
           <h1 className="text-[1.65rem] leading-tight sm:text-3xl md:text-4xl font-bold tracking-tight text-slate-50 mb-2 sm:mb-3">
             Who Doesn&apos;t Follow Back
           </h1>
-          <p className="text-[0.95rem] sm:text-lg text-slate-400 leading-relaxed max-w-2xl">
+          <p className="text-[0.95rem] sm:text-lg text-slate-400 leading-relaxed max-w-3xl xl:max-w-none">
             Upload your Instagram data export ZIP to see who you follow that doesn&apos;t follow you back.
           </p>
         </header>
