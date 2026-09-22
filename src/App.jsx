@@ -181,7 +181,64 @@ const isZipFile = (file) => {
   return name.endsWith('.zip') || type.includes('zip');
 };
 
-/** Turn selected Files / ZIPs into { name, json } payloads. iOS MIME types are unreliable. */
+/** Only following / followers* relationship JSON — ignore the rest of an Instagram export tree. */
+const isRelationshipJsonName = (pathOrName) => {
+  const name = basename(pathOrName).toLowerCase();
+  if (!name.endsWith('.json')) return false;
+  if (IGNORED_EXPORT_NAME.test(name)) return false;
+  return name.includes('follower') || name.includes('following');
+};
+
+const displayNameForFile = (file) =>
+  basename(file.webkitRelativePath || file.name) || 'upload.json';
+
+/** Recursively collect File objects from a dropped folder (or flat file list). */
+const collectDroppedFiles = async (dataTransfer) => {
+  const items = dataTransfer?.items;
+  if (!items?.length) return Array.from(dataTransfer?.files || []);
+
+  const files = [];
+
+  const readEntry = async (entry) => {
+    if (!entry) return;
+    if (entry.isFile) {
+      const file = await new Promise((resolve, reject) => entry.file(resolve, reject));
+      files.push(file);
+      return;
+    }
+    if (entry.isDirectory) {
+      const reader = entry.createReader();
+      const readBatch = () =>
+        new Promise((resolve, reject) => reader.readEntries(resolve, reject));
+      // readEntries may return in batches until empty
+      let batch = await readBatch();
+      while (batch.length) {
+        await Promise.all(batch.map(readEntry));
+        batch = await readBatch();
+      }
+    }
+  };
+
+  const topEntries = [];
+  for (let i = 0; i < items.length; i += 1) {
+    const item = items[i];
+    const entry = item.webkitGetAsEntry?.() || item.getAsEntry?.();
+    if (entry) topEntries.push(entry);
+    else if (item.kind === 'file') {
+      const file = item.getAsFile();
+      if (file) files.push(file);
+    }
+  }
+
+  if (topEntries.length) {
+    await Promise.all(topEntries.map(readEntry));
+    return files;
+  }
+
+  return Array.from(dataTransfer.files || []);
+};
+
+/** Turn selected Files / folders / ZIPs into { name, json } payloads. iOS MIME types are unreliable. */
 const expandSelectedFiles = async (files) => {
   const entries = [];
   const notices = [];
@@ -192,12 +249,7 @@ const expandSelectedFiles = async (files) => {
         const bytes = await readFileAsBytes(file);
         const unzipped = unzipSync(bytes, {
           // Only decompress relationship JSON — full Instagram ZIPs also contain media.
-          filter: (entry) => {
-            const name = basename(entry.name).toLowerCase();
-            if (!name.endsWith('.json')) return false;
-            if (IGNORED_EXPORT_NAME.test(name)) return false;
-            return name.includes('follower') || name.includes('following');
-          },
+          filter: (entry) => isRelationshipJsonName(entry.name),
         });
         let found = 0;
         for (const [path, data] of Object.entries(unzipped)) {
@@ -213,7 +265,7 @@ const expandSelectedFiles = async (files) => {
         if (found) {
           notices.push(`Extracted ${found} JSON file${found > 1 ? 's' : ''} from ${file.name}.`);
         } else {
-          notices.push(`No JSON files found inside ${file.name}.`);
+          notices.push(`No following/followers JSON found inside ${file.name}.`);
         }
       } catch {
         throw new Error(`Could not open ${file.name}. If this is an Instagram export, try selecting the ZIP again.`);
@@ -221,9 +273,15 @@ const expandSelectedFiles = async (files) => {
       continue;
     }
 
+    const name = displayNameForFile(file);
+    if (!isRelationshipJsonName(name) && !isRelationshipJsonName(file.name)) {
+      // Skip media / unrelated export files when a whole folder is dropped.
+      continue;
+    }
+
     try {
       const text = await readFileAsText(file);
-      entries.push({ name: basename(file.name) || 'upload.json', json: JSON.parse(text) });
+      entries.push({ name, json: JSON.parse(text) });
     } catch {
       // Not JSON — ignore here; caller reports if nothing usable was found.
     }
@@ -469,7 +527,7 @@ export default function App() {
     }
 
     if (!entries.length) {
-      setError('Could not find following/followers data in that ZIP. Upload your Instagram data export ZIP.');
+      setError('Could not find following.json or followers_N.json. Upload the ZIP, those JSON files, or the unzipped export folder.');
       return;
     }
 
@@ -513,7 +571,7 @@ export default function App() {
     if (!resolvedFollowing.length && !resolvedFollowers.length) {
       setError(
         errors[0] ||
-          'No following/followers data found in that ZIP. Upload your Instagram data export ZIP.'
+          'No following.json or followers_N.json found. Upload the ZIP, those JSON files, or the unzipped export folder.'
       );
       if (notices.length) setNotice(notices.join(' '));
       return;
@@ -598,11 +656,16 @@ export default function App() {
     setIsDragging(false);
   };
 
-  const onDrop = (e) => {
+  const onDrop = async (e) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-    handleFiles(e.dataTransfer.files);
+    try {
+      const files = await collectDroppedFiles(e.dataTransfer);
+      handleFiles(files);
+    } catch {
+      handleFiles(e.dataTransfer.files);
+    }
   };
 
   const clearData = () => {
@@ -737,7 +800,7 @@ export default function App() {
           <input
             ref={inputRef}
             type="file"
-            accept=".zip,application/zip,application/x-zip-compressed,application/octet-stream"
+            accept=".json,.zip,application/json,application/zip,application/x-zip-compressed,text/plain,application/octet-stream,*/*"
             multiple
             className="hidden"
             onChange={(e) => {
