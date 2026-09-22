@@ -692,7 +692,7 @@ export default function App() {
             Who Doesn&apos;t Follow Back
           </h1>
           <p className="text-[0.95rem] sm:text-lg text-slate-400 leading-relaxed max-w-3xl xl:max-w-none">
-            Upload your Instagram data export ZIP to see who you follow that doesn&apos;t follow you back.
+            Upload your Instagram export ZIP, folder, or following/followers JSON to see who doesn&apos;t follow you back.
           </p>
         </header>
 
@@ -789,12 +789,12 @@ export default function App() {
           </div>
           <div className="px-1">
             <p className="text-base sm:text-lg font-semibold text-slate-100">
-              <span className="sm:hidden">{isDragging ? 'Drop your ZIP here' : 'Tap to upload your export ZIP'}</span>
-              <span className="hidden sm:inline">{isDragging ? 'Drop your ZIP here' : 'Drag & drop your export ZIP'}</span>
+              <span className="sm:hidden">{isDragging ? 'Drop files here' : 'Tap to upload your export'}</span>
+              <span className="hidden sm:inline">{isDragging ? 'Drop files here' : 'Drag & drop your export'}</span>
             </p>
             <p className="text-xs sm:text-sm text-slate-400 mt-1.5 leading-relaxed">
-              <span className="sm:hidden">Instagram data download ZIP only</span>
-              <span className="hidden sm:inline">or click to browse for the Instagram data download ZIP</span>
+              <span className="sm:hidden">ZIP, folder, or following/followers JSON</span>
+              <span className="hidden sm:inline">ZIP, unzipped folder, or following/followers JSON files</span>
             </p>
           </div>
           <input
@@ -924,7 +924,7 @@ export default function App() {
 
           {!bothLoaded && (
             <p className="text-sm sm:text-base text-slate-400 leading-relaxed">
-              Upload your Instagram export ZIP to generate the list. Previous uploads are restored from local storage when available.
+              Upload your Instagram export to generate the list. Previous uploads are restored from local storage when available.
             </p>
           )}
 
